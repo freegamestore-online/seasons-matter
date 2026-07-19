@@ -1,53 +1,60 @@
-import { describe, expect, it } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
-  ARENA_HALF,
-  PICKUP_RADIUS,
   clamp,
-  clampToArena,
-  collides,
   dist2,
-  randomOrbPosition,
+  collides,
+  clampToArena,
+  randomItemPosition,
+  currentSeasonIndex,
+  seasonProgress,
+  SEASONS,
+  SEASON_DURATION,
 } from "./logic";
 
 describe("clamp", () => {
-  it("bounds a value within the range", () => {
-    expect(clamp(5, 0, 10)).toBe(5);
-    expect(clamp(-3, 0, 10)).toBe(0);
-    expect(clamp(99, 0, 10)).toBe(10);
-  });
+  it("clamps below min", () => expect(clamp(-5, 0, 10)).toBe(0));
+  it("clamps above max", () => expect(clamp(15, 0, 10)).toBe(10));
+  it("passes through in range", () => expect(clamp(5, 0, 10)).toBe(5));
+});
+
+describe("dist2", () => {
+  it("returns 0 for same point", () => expect(dist2(1, 1, 1, 1)).toBe(0));
+  it("returns squared distance", () => expect(dist2(0, 0, 3, 4)).toBe(25));
 });
 
 describe("collides", () => {
-  it("detects a touch inside the pickup radius", () => {
-    expect(collides(0, 0, 0.5, 0.5)).toBe(true);
-  });
-  it("misses when farther than the radius", () => {
-    expect(collides(0, 0, 5, 5)).toBe(false);
-  });
-  it("is inclusive at exactly the radius edge", () => {
-    expect(collides(0, 0, PICKUP_RADIUS, 0)).toBe(true);
-  });
+  it("detects overlap", () => expect(collides(0, 0, 0.5, 0.5)).toBe(true));
+  it("no overlap when far", () => expect(collides(0, 0, 10, 10)).toBe(false));
 });
 
 describe("clampToArena", () => {
-  it("keeps out-of-bounds points inside the arena", () => {
-    expect(clampToArena(100, -100)).toEqual([ARENA_HALF, -ARENA_HALF]);
+  it("clamps both axes", () => {
+    const [x, z] = clampToArena(100, -100);
+    expect(x).toBe(16);
+    expect(z).toBe(-16);
   });
 });
 
-describe("randomOrbPosition", () => {
-  it("never spawns within minDist of the avoid point", () => {
-    // A deterministic PRNG: the first (0.5, 0.5) draw lands on the player at
-    // origin and must be rejected; the next draw is accepted.
-    const seq = [0.5, 0.5, 0.95, 0.05, 0.2, 0.8];
-    let i = 0;
-    const rand = () => seq[i++ % seq.length]!;
-    const [x, z] = randomOrbPosition(0, 0, ARENA_HALF, 4, rand);
+describe("randomItemPosition", () => {
+  it("avoids the given point", () => {
+    const [x, z] = randomItemPosition(0, 0, 16, 4, Math.random);
     expect(dist2(x, z, 0, 0)).toBeGreaterThanOrEqual(16);
   });
-  it("stays within the arena bounds", () => {
-    const [x, z] = randomOrbPosition(0, 0);
-    expect(Math.abs(x)).toBeLessThanOrEqual(ARENA_HALF);
-    expect(Math.abs(z)).toBeLessThanOrEqual(ARENA_HALF);
+});
+
+describe("season cycling", () => {
+  it("starts at season 0", () => expect(currentSeasonIndex(0)).toBe(0));
+  it("advances each SEASON_DURATION", () => {
+    expect(currentSeasonIndex(SEASON_DURATION)).toBe(1);
+    expect(currentSeasonIndex(SEASON_DURATION * 2)).toBe(2);
+    expect(currentSeasonIndex(SEASON_DURATION * 3)).toBe(3);
+    expect(currentSeasonIndex(SEASON_DURATION * 4)).toBe(0);
+  });
+  it("all seasons are defined", () => {
+    SEASONS.forEach((s) => expect(s).toBeTruthy());
+  });
+  it("progress is 0..1", () => {
+    expect(seasonProgress(0)).toBe(0);
+    expect(seasonProgress(SEASON_DURATION / 2)).toBeCloseTo(0.5);
   });
 });

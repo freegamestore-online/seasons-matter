@@ -15,7 +15,6 @@ import {
   clampToArena,
   collides,
   randomItemPosition,
-  currentSeasonIndex,
   seasonProgress,
   lerpColor,
 } from "../lib/logic";
